@@ -1,10 +1,10 @@
 import React, { useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
-import { WingSession } from '../../types';
+import { WingfoilSession } from '../../types';
 
 interface MiniMapProps {
-  session: WingSession;
+  session: WingfoilSession;
   width?: string;
   height?: string;
 }

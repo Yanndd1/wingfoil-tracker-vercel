@@ -1,12 +1,12 @@
 import React, { useMemo, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
-import { WingSession, WingRun } from '../../types';
+import { WingfoilSession, WingRun } from '../../types';
 import { useTranslation } from '../../context/LanguageContext';
 import { formatDuration, formatDistance } from '../../utils/runDetection';
 
 interface SessionMapProps {
-  session: WingSession;
+  session: WingfoilSession;
   selectedRun?: WingRun | null;
   onSelectRun?: (run: WingRun | null) => void;
   height?: string;
@@ -53,7 +53,7 @@ const SessionMap: React.FC<SessionMapProps> = ({
 
   // Get GPS data
   const latlngData = session.rawData?.latlng;
-  const speedData = session.rawData?.velocity_smooth;
+  const speedData = session.rawData?.speed;
   const timeData = session.rawData?.time;
 
   // Calculate bounds and speed range
@@ -65,8 +65,8 @@ const SessionMap: React.FC<SessionMapProps> = ({
     const bounds = new LatLngBounds(latlngData as [number, number][]);
 
     // Get speed range (convert m/s to km/h)
-    const speeds = speedData?.map(s => s * 3.6) || [];
-    const validSpeeds = speeds.filter(s => s > 0);
+    const speeds = speedData?.map((s: number) => s * 3.6) || [];
+    const validSpeeds = speeds.filter((s: number) => s > 0);
     const minSpeed = validSpeeds.length > 0 ? Math.min(...validSpeeds) : 0;
     const maxSpeed = validSpeeds.length > 0 ? Math.max(...validSpeeds) : 30;
 
@@ -90,9 +90,9 @@ const SessionMap: React.FC<SessionMapProps> = ({
   const runSegments = useMemo(() => {
     if (!latlngData || !timeData) return [];
 
-    return session.runs.map(run => {
-      const startIdx = timeData.findIndex(t => t >= run.startTime);
-      const endIdx = timeData.findIndex(t => t >= run.endTime);
+    return session.runs.map((run: WingRun) => {
+      const startIdx = timeData.findIndex((t: number) => t >= run.startTime);
+      const endIdx = timeData.findIndex((t: number) => t >= run.endTime);
 
       if (startIdx === -1 || endIdx === -1) return null;
 
@@ -137,7 +137,7 @@ const SessionMap: React.FC<SessionMapProps> = ({
         <FitBoundsComponent bounds={bounds} />
 
         {/* Speed-colored trace */}
-        {segments.map((segment, idx) => (
+        {segments.map((segment: { positions: [number, number][]; color: string }, idx: number) => (
           <Polyline
             key={idx}
             positions={segment.positions}

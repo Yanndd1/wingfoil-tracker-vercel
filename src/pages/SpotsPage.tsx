@@ -50,8 +50,8 @@ const SpotsPage: React.FC = () => {
       if (foundSpot && foundKey) {
         // Update existing spot
         foundSpot.sessionsCount += 1;
-        foundSpot.totalDuration += session.stats.totalRideTime;
-        foundSpot.bestSpeed = Math.max(foundSpot.bestSpeed, session.stats.maxSpeed);
+        foundSpot.totalDuration += session.stats.totalRidingTime;
+        foundSpot.bestSpeed = Math.max(foundSpot.bestSpeed, session.stats.bestMaxSpeed);
         foundSpot.avgRunsPerSession = (foundSpot.avgRunsPerSession * (foundSpot.sessionsCount - 1) + session.stats.numberOfRuns) / foundSpot.sessionsCount;
         if (new Date(session.date) > foundSpot.lastVisit) {
           foundSpot.lastVisit = new Date(session.date);
@@ -66,8 +66,8 @@ const SpotsPage: React.FC = () => {
           name: spotName,
           coordinates: [startLat, startLng],
           sessionsCount: 1,
-          totalDuration: session.stats.totalRideTime,
-          bestSpeed: session.stats.maxSpeed,
+          totalDuration: session.stats.totalRidingTime,
+          bestSpeed: session.stats.bestMaxSpeed,
           avgRunsPerSession: session.stats.numberOfRuns,
           lastVisit: new Date(session.date),
         });
