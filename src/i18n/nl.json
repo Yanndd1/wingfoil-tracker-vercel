@@ -122,13 +122,13 @@
     "subtitle": "Volg je wingfoil voortgang",
     "description": "Analyseer je sessies, volg je runs en meet je voortgang in de loop van de tijd.",
     "feature1Title": "Automatische detectie",
-    "feature1Desc": "Ons algoritme detecteert je runs uit Strava GPS-gegevens",
+    "feature1Desc": "Ons algoritme detecteert je runs uit Strava GPS-gegevens met wiskundige regels",
     "feature2Title": "Gedetailleerde statistieken",
     "feature2Desc": "Duur, afstand, snelheid, hartslag voor elke run",
     "feature3Title": "Voortgang volgen",
     "feature3Desc": "Visualiseer je verbetering sessie na sessie",
     "connectStrava": "Verbinden met Strava",
-    "stravaNote": "We hebben alleen toegang tot je Kitesurf activiteiten"
+    "stravaNote": "We zoeken naar Wingfoil sessies getagd als Kitesurf op Strava"
   },
   "spots": {
     "title": "Spots",
@@ -153,7 +153,9 @@
     "noGpsData": "Geen GPS-gegevens beschikbaar voor deze sessie"
   },
   "footer": {
-    "madeWith": "Made with ❤️ in Provence"
+    "madeWith": "Made with ❤️ in Provence",
+    "poweredByStrava": "Powered by Strava",
+    "privacyPolicy": "Privacybeleid"
   },
   "errors": {
     "storageFull": "Opslag is vol. Probeer oude sessies te verwijderen of je gegevens te exporteren.",

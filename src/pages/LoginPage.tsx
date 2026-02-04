@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Waves, Activity, TrendingUp, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage, LANGUAGES, Language } from '../context/LanguageContext';
@@ -108,8 +109,29 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <footer className="text-center py-4 text-ocean-200 text-sm">
-        <p>{t('settings.compatible')}</p>
+      <footer className="text-center py-4 space-y-3">
+        <p className="text-ocean-200 text-sm">{t('settings.compatible')}</p>
+        <div className="flex items-center justify-center gap-4">
+          <Link
+            to="/privacy"
+            className="text-ocean-200 hover:text-white text-sm underline transition-colors"
+          >
+            {t('footer.privacyPolicy')}
+          </Link>
+          <span className="text-ocean-300">|</span>
+          <a
+            href="https://www.strava.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-ocean-200 hover:text-white text-sm transition-colors"
+          >
+            <img
+              src="/strava-powered-by.svg"
+              alt="Powered by Strava"
+              className="h-5"
+            />
+          </a>
+        </div>
       </footer>
     </div>
   );

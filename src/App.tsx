@@ -9,6 +9,7 @@ import SessionsPage from './pages/SessionsPage';
 import SessionDetailPage from './pages/SessionDetailPage';
 import SettingsPage from './pages/SettingsPage';
 import SpotsPage from './pages/SpotsPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import Loading from './components/ui/Loading';
 
 // Protected route wrapper
@@ -57,6 +58,7 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route path="/callback" element={<CallbackPage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
       {/* Protected routes */}
       <Route

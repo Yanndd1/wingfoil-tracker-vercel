@@ -122,13 +122,13 @@
     "subtitle": "Suivez vos progrès en wingfoil",
     "description": "Analysez vos sessions, suivez vos runs et mesurez votre progression au fil du temps.",
     "feature1Title": "Détection automatique",
-    "feature1Desc": "Notre algorithme détecte vos runs à partir des données GPS Strava",
+    "feature1Desc": "Notre algorithme détecte vos runs à partir des données GPS Strava avec des règles mathématiques",
     "feature2Title": "Statistiques détaillées",
     "feature2Desc": "Durée, distance, vitesse, fréquence cardiaque pour chaque run",
     "feature3Title": "Suivi de progression",
     "feature3Desc": "Visualisez votre amélioration session après session",
     "connectStrava": "Se connecter avec Strava",
-    "stravaNote": "Nous accédons uniquement à vos activités Kitesurf"
+    "stravaNote": "Nous recherchons vos sessions Wingfoil enregistrées comme Kitesurf sur Strava"
   },
   "spots": {
     "title": "Spots",
@@ -153,7 +153,9 @@
     "noGpsData": "Aucune donnée GPS disponible pour cette session"
   },
   "footer": {
-    "madeWith": "Made with ❤️ in Provence"
+    "madeWith": "Made with ❤️ in Provence",
+    "poweredByStrava": "Powered by Strava",
+    "privacyPolicy": "Politique de confidentialité"
   },
   "errors": {
     "storageFull": "Le stockage local est plein. Essayez de supprimer des anciennes sessions ou d'exporter vos données.",

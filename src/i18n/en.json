@@ -122,13 +122,13 @@
     "subtitle": "Track your wingfoil progress",
     "description": "Analyze your sessions, track your runs, and measure your progress over time.",
     "feature1Title": "Automatic detection",
-    "feature1Desc": "Our algorithm detects your runs from Strava GPS data",
+    "feature1Desc": "Our algorithm detects your runs from Strava GPS data using mathematical rules",
     "feature2Title": "Detailed statistics",
     "feature2Desc": "Duration, distance, speed, heart rate for each run",
     "feature3Title": "Progress tracking",
     "feature3Desc": "Visualize your improvement session after session",
     "connectStrava": "Connect with Strava",
-    "stravaNote": "We only access your Kitesurf activities"
+    "stravaNote": "We look for Wingfoil sessions tagged as Kitesurf on Strava"
   },
   "spots": {
     "title": "Spots",
@@ -153,7 +153,9 @@
     "noGpsData": "No GPS data available for this session"
   },
   "footer": {
-    "madeWith": "Made with ❤️ in Provence"
+    "madeWith": "Made with ❤️ in Provence",
+    "poweredByStrava": "Powered by Strava",
+    "privacyPolicy": "Privacy Policy"
   },
   "errors": {
     "storageFull": "Storage is full. Try deleting old sessions or exporting your data.",
