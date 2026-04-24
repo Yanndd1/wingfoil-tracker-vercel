@@ -45,7 +45,10 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  const recentSessions = sessions.slice(0, 5);
+  // v2: excluded sessions (rejected by max-speed guard) are hidden from
+  // dashboards but kept in storage so users can re-include them.
+  const visibleSessions = sessions.filter(s => !s.excluded);
+  const recentSessions = visibleSessions.slice(0, 5);
 
   return (
     <Layout>
@@ -105,14 +108,14 @@ const DashboardPage: React.FC = () => {
                   icon={<Zap className="h-5 w-5 text-ocean-600" />}
                 />
                 <StatCard
-                  title={t('dashboard.avgDuration')}
-                  value={formatDuration(progressStats.averageRunDuration)}
+                  title={t('dashboard.lastSessionLongestRunDuration')}
+                  value={formatDuration(progressStats.lastSession?.longestRunDuration ?? 0)}
                   trend={progressStats.recentTrend.runDuration}
                   icon={<Timer className="h-5 w-5 text-ocean-600" />}
                 />
                 <StatCard
-                  title={t('dashboard.avgDistance')}
-                  value={formatDistance(progressStats.averageRunDistance)}
+                  title={t('dashboard.lastSessionLongestRunDistance')}
+                  value={formatDistance(progressStats.lastSession?.longestRunDistance ?? 0)}
                   trend={progressStats.recentTrend.runDistance}
                   icon={<Ruler className="h-5 w-5 text-ocean-600" />}
                 />
@@ -135,26 +138,26 @@ const DashboardPage: React.FC = () => {
                   icon={<Ruler className="h-5 w-5 text-white" />}
                 />
                 <StatCard
-                  title={t('dashboard.maxSpeed')}
-                  value={`${progressStats.bestMaxSpeed.toFixed(1)} km/h`}
+                  title={t('dashboard.allTimeAverageSpeed')}
+                  value={`${progressStats.allTimeAverageSpeed.toFixed(1)} km/h`}
                   variant="primary"
                   icon={<Zap className="h-5 w-5 text-white" />}
                 />
               </div>
             )}
 
-            {/* Progress Charts */}
-            {sessions.length >= 3 && (
+            {/* Progress Charts — full history since the very first session */}
+            {visibleSessions.length >= 3 && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <ProgressChart
-                  sessions={sessions}
+                  sessions={visibleSessions}
                   metric="duration"
-                  title={t('sessionDetail.duration')}
+                  title={t('charts.durationProgress')}
                 />
                 <ProgressChart
-                  sessions={sessions}
+                  sessions={visibleSessions}
                   metric="distance"
-                  title={t('sessionDetail.distance')}
+                  title={t('charts.distanceProgress')}
                 />
               </div>
             )}

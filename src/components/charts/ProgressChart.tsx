@@ -7,11 +7,12 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
+  Brush,
 } from 'recharts';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr, enUS, nl } from 'date-fns/locale';
 import { WingfoilSession } from '../../types';
+import { useTranslation } from '../../context/LanguageContext';
 
 interface ProgressChartProps {
   sessions: WingfoilSession[];
@@ -19,41 +20,45 @@ interface ProgressChartProps {
   title: string;
 }
 
+/**
+ * v2: renders the progression of the chosen metric across the **entire**
+ * history (no more `.slice(-20)`), starting from the very first session
+ * fetched from Strava. Only the "best" series is plotted — the per-session
+ * average was removed to keep the chart focused on personal records.
+ *
+ * A horizontal `<Brush>` keeps the chart readable when there are many
+ * sessions: the visible window defaults to the latest ~30 sessions, the
+ * user can drag to explore older periods.
+ */
 const ProgressChart: React.FC<ProgressChartProps> = ({ sessions, metric, title }) => {
-  const sortedSessions = [...sessions]
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(-20); // Last 20 sessions
+  const { t, language } = useTranslation();
+  const locale = language === 'fr' ? fr : language === 'nl' ? nl : enUS;
+
+  const sortedSessions = [...sessions].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
 
   const data = sortedSessions.map(session => {
-    let value: number;
     let bestValue: number;
-
     switch (metric) {
       case 'duration':
-        value = session.stats.averageRunDuration;
         bestValue = session.stats.longestRunDuration;
         break;
       case 'distance':
-        value = session.stats.averageRunDistance;
         bestValue = session.stats.longestRunDistance;
         break;
       case 'speed':
-        value = session.stats.bestAverageSpeed;
         bestValue = session.stats.bestMaxSpeed;
         break;
       case 'runs':
-        value = session.stats.numberOfRuns;
         bestValue = session.stats.numberOfRuns;
         break;
       default:
-        value = 0;
         bestValue = 0;
     }
-
     return {
-      date: format(new Date(session.date), 'dd/MM', { locale: fr }),
-      fullDate: format(new Date(session.date), 'EEEE d MMMM', { locale: fr }),
-      value: Math.round(value * 10) / 10,
+      date: format(new Date(session.date), 'dd/MM/yy', { locale }),
+      fullDate: format(new Date(session.date), 'EEEE d MMMM yyyy', { locale }),
       bestValue: Math.round(bestValue * 10) / 10,
       sessionName: session.name,
     };
@@ -67,29 +72,27 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ sessions, metric, title }
         return 'm';
       case 'speed':
         return 'km/h';
-      case 'runs':
-        return '';
       default:
         return '';
     }
   };
 
-  const getLabels = () => {
+  const getLabel = () => {
     switch (metric) {
       case 'duration':
-        return { avg: 'Durée moyenne', best: 'Meilleure durée' };
+        return t('charts.bestDuration');
       case 'distance':
-        return { avg: 'Distance moyenne', best: 'Meilleure distance' };
+        return t('charts.bestDistance');
       case 'speed':
-        return { avg: 'Vitesse moyenne', best: 'Vitesse max' };
+        return t('charts.maxSpeed');
       case 'runs':
-        return { avg: 'Nombre de runs', best: '' };
+        return t('charts.numberOfRuns');
       default:
-        return { avg: '', best: '' };
+        return '';
     }
   };
 
-  const labels = getLabels();
+  const label = getLabel();
   const unit = getUnit();
 
   if (data.length === 0) {
@@ -97,22 +100,28 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ sessions, metric, title }
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
         <div className="h-64 flex items-center justify-center text-gray-500">
-          Pas assez de données pour afficher le graphique
+          {t('charts.notEnoughData')}
         </div>
       </div>
     );
   }
 
+  // Default brush window to roughly the last 30 sessions when history is long.
+  const brushStart = Math.max(0, data.length - 30);
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-1">{title}</h3>
+      <p className="text-xs text-gray-500 mb-4">
+        {data.length} {t('charts.sessionsSinceFirst')}
+      </p>
       <div className="h-64 sm:h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12, fill: '#6b7280' }}
+              tick={{ fontSize: 11, fill: '#6b7280' }}
               tickLine={{ stroke: '#e5e7eb' }}
             />
             <YAxis
@@ -127,10 +136,7 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ sessions, metric, title }
                 borderRadius: '8px',
                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
               }}
-              formatter={(value, name) => [
-                `${value}${unit}`,
-                name === 'value' ? labels.avg : labels.best,
-              ]}
+              formatter={(value) => [`${value}${unit}`, label]}
               labelFormatter={(_, payload) => {
                 if (payload && payload[0]) {
                   const p = payload[0].payload as { fullDate: string; sessionName: string };
@@ -139,26 +145,22 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ sessions, metric, title }
                 return '';
               }}
             />
-            <Legend
-              formatter={(value) => (value === 'value' ? labels.avg : labels.best)}
-            />
             <Line
               type="monotone"
-              dataKey="value"
+              dataKey="bestValue"
+              name={label}
               stroke="#0d9488"
               strokeWidth={2}
-              dot={{ fill: '#0d9488', strokeWidth: 2, r: 4 }}
+              dot={{ fill: '#0d9488', strokeWidth: 2, r: 3 }}
               activeDot={{ r: 6, fill: '#0d9488' }}
             />
-            {metric !== 'runs' && (
-              <Line
-                type="monotone"
-                dataKey="bestValue"
-                stroke="#60a5fa"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={{ fill: '#60a5fa', strokeWidth: 2, r: 3 }}
-                activeDot={{ r: 5, fill: '#60a5fa' }}
+            {data.length > 15 && (
+              <Brush
+                dataKey="date"
+                height={24}
+                stroke="#0d9488"
+                startIndex={brushStart}
+                travellerWidth={10}
               />
             )}
           </LineChart>

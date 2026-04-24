@@ -121,9 +121,16 @@ const safeSetItem = (key: string, value: string): void => {
 
 const DEFAULT_CONFIG: RunDetectionConfig = {
   minSpeedThreshold: 12, // km/h - higher for wingfoil
+  // v2: 60 km/h default — wingfoilers easily reach 30-45 km/h on planing,
+  // racers go past 50. Below 60 we're confident it isn't a powered craft.
+  // Adjustable 30-80 km/h from Settings.
+  maxSpeedThreshold: 60, // km/h
   minRunDuration: 10, // seconds - longer runs in wingfoil
   minStopDuration: 5, // seconds
   speedSmoothingWindow: 3, // data points
+  // v2: matches the historical hardcoded list. Users who tag accurately
+  // (Strava added "Wing" / "Windsurfing" categories) can extend this.
+  wingfoilSportTypes: ['Kitesurf', 'Kitesurfing', 'Kitesurf Session', 'Windsurf'],
 };
 
 // Token management

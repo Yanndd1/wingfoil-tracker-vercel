@@ -29,13 +29,18 @@ const smoothSpeed = (speeds: number[], windowSize: number): number[] => {
  */
 const msToKmh = (speedMs: number): number => speedMs * 3.6;
 
+export interface DetectionResult {
+  runs: WingRun[];
+  excluded: boolean; // v2: true when the max-speed guard rejected the session
+}
+
 /**
- * Detect wing runs from activity stream data
+ * Detect wing runs from activity stream data.
  *
- * A run is detected when:
- * 1. Speed goes above the threshold (start of run)
- * 2. Speed stays above threshold for minimum duration
- * 3. Speed drops below threshold (end of run)
+ * v2: sessions whose smoothed peak speed exceeds `config.maxSpeedThreshold`
+ * are rejected entirely (probably a powered craft mistakenly tagged as
+ * wing, or a GPS spike). Use `detectRunsWithMeta` to distinguish "no runs
+ * found" from "excluded by guard".
  */
 export const detectRuns = (
   timeData: number[],
@@ -44,14 +49,42 @@ export const detectRuns = (
   config: RunDetectionConfig,
   heartrateData?: number[],
   latlngData?: [number, number][]
-): WingRun[] => {
+): WingRun[] =>
+  detectRunsWithMeta(
+    timeData,
+    speedData,
+    distanceData,
+    config,
+    heartrateData,
+    latlngData
+  ).runs;
+
+export const detectRunsWithMeta = (
+  timeData: number[],
+  speedData: number[],
+  distanceData: number[],
+  config: RunDetectionConfig,
+  heartrateData?: number[],
+  latlngData?: [number, number][]
+): DetectionResult => {
   if (timeData.length === 0 || speedData.length === 0) {
-    return [];
+    return { runs: [], excluded: false };
   }
 
   // Convert speed to km/h and smooth
   const speedKmh = speedData.map(msToKmh);
   const smoothedSpeed = smoothSpeed(speedKmh, config.speedSmoothingWindow);
+
+  // v2: max-speed guard. Opt-in: only active when the threshold is > 0.
+  if (config.maxSpeedThreshold && config.maxSpeedThreshold > 0) {
+    let peak = 0;
+    for (let i = 0; i < smoothedSpeed.length; i++) {
+      if (smoothedSpeed[i] > peak) peak = smoothedSpeed[i];
+    }
+    if (peak > config.maxSpeedThreshold) {
+      return { runs: [], excluded: true };
+    }
+  }
 
   const runs: WingRun[] = [];
   let runStartIndex: number | null = null;
@@ -109,7 +142,7 @@ export const detectRuns = (
     }
   }
 
-  return runs;
+  return { runs, excluded: false };
 };
 
 /**
@@ -199,6 +232,7 @@ export const calculateSessionStats = (runs: WingRun[]): SessionStats => {
       longestRunDistance: 0,
       bestAverageSpeed: 0,
       bestMaxSpeed: 0,
+      averageRunAverageSpeed: 0,
     };
   }
 
@@ -207,6 +241,7 @@ export const calculateSessionStats = (runs: WingRun[]): SessionStats => {
 
   const avgHeartrates = runs.filter(r => r.averageHeartrate).map(r => r.averageHeartrate!);
   const maxHeartrates = runs.filter(r => r.maxHeartrate).map(r => r.maxHeartrate!);
+  const sumAverageSpeeds = runs.reduce((sum, r) => sum + r.averageSpeed, 0);
 
   return {
     numberOfRuns: runs.length,
@@ -218,6 +253,7 @@ export const calculateSessionStats = (runs: WingRun[]): SessionStats => {
     longestRunDistance: Math.max(...runs.map(r => r.distance)),
     bestAverageSpeed: Math.max(...runs.map(r => r.averageSpeed)),
     bestMaxSpeed: Math.max(...runs.map(r => r.maxSpeed)),
+    averageRunAverageSpeed: Math.round((sumAverageSpeeds / runs.length) * 10) / 10,
     averageHeartrate:
       avgHeartrates.length > 0
         ? Math.round(avgHeartrates.reduce((a, b) => a + b, 0) / avgHeartrates.length)

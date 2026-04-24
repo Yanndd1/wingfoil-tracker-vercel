@@ -11,8 +11,9 @@ const STRAVA_AUTH_URL = 'https://www.strava.com/oauth/authorize';
 const STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token';
 const STRAVA_API_URL = 'https://www.strava.com/api/v3';
 
-// Wingfoil activity types to look for - Kitesurf activities only
-const WINGFOIL_ACTIVITY_TYPES = ['Kitesurf', 'Kitesurfing', 'Kitesurf Session'];
+// Default Strava activity types treated as wingfoil when the caller
+// doesn't pass a custom list (see `getWingfoilActivities`).
+const DEFAULT_WINGFOIL_ACTIVITY_TYPES = ['Kitesurf', 'Kitesurfing', 'Kitesurf Session', 'Windsurf'];
 
 export const getAuthUrl = (): string => {
   const params = new URLSearchParams({
@@ -193,36 +194,44 @@ export const getActivityStreams = async (activityId: number): Promise<StravaStre
   return response.json();
 };
 
+/**
+ * v2: fetch every wingfoil activity from the athlete's Strava history.
+ *
+ * The previous version capped at 10 pages (~500 activities). Long-time
+ * winger users had their history truncated; the progression chart on the
+ * dashboard now wants the full timeline. We page until Strava returns
+ * an empty array, with a soft 200-page (~10 000 activities) cap as a
+ * safety net against an accidental infinite loop.
+ */
 export const getWingfoilActivities = async (
   after?: number,
-  before?: number
+  before?: number,
+  onProgress?: (fetched: number, page: number) => void,
+  sportTypes: string[] = DEFAULT_WINGFOIL_ACTIVITY_TYPES
 ): Promise<StravaActivity[]> => {
+  const allowed = new Set(sportTypes.filter(s => s.trim() !== ''));
+  const filterEnabled = allowed.size > 0;
+
   const allActivities: StravaActivity[] = [];
-  let page = 1;
-  const perPage = 50;
-  let hasMore = true;
+  const perPage = 100; // 200 req/15min Strava budget — bigger pages = fewer calls
+  const SAFETY_MAX_PAGES = 200;
 
-  while (hasMore) {
+  for (let page = 1; page <= SAFETY_MAX_PAGES; page++) {
     const activities = await getActivities(page, perPage, after, before);
+    if (activities.length === 0) break;
 
-    if (activities.length === 0) {
-      hasMore = false;
-    } else {
-      // Filter for Windsurf/Kitesurf activities (wingfoil sessions)
-      const wingfoilActivities = activities.filter(
-        activity =>
-          WINGFOIL_ACTIVITY_TYPES.includes(activity.type) ||
-          WINGFOIL_ACTIVITY_TYPES.includes(activity.sport_type)
-      );
+    const wingfoilActivities = filterEnabled
+      ? activities.filter(
+          a => allowed.has(a.type) || allowed.has(a.sport_type)
+        )
+      : activities;
+    allActivities.push(...wingfoilActivities);
 
-      allActivities.push(...wingfoilActivities);
-      page++;
+    if (onProgress) onProgress(allActivities.length, page);
 
-      // Safety limit
-      if (page > 10) {
-        hasMore = false;
-      }
-    }
+    // Strava returns fewer than perPage when the last page is reached —
+    // breaking here saves one round-trip that would just be an empty array.
+    if (activities.length < perPage) break;
   }
 
   return allActivities;

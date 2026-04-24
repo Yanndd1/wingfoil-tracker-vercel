@@ -17,7 +17,7 @@ import Layout from '../components/layout/Layout';
 import { DEFAULT_CONFIG, getStorageInfo, pruneOldSessionsRawData, migrateToCompressedStorage } from '../services/storage';
 
 const SettingsPage: React.FC = () => {
-  const { config, updateConfig, sessions } = useData();
+  const { config, updateConfig, sessions, reprocessAllSessions } = useData();
   const { athlete, logout } = useAuth();
   const { t } = useTranslation();
   const [localConfig, setLocalConfig] = useState(config);
@@ -25,6 +25,8 @@ const SettingsPage: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [storageInfo, setStorageInfo] = useState<{ used: number; total: number; sessionsSize: number } | null>(null);
   const [optimizeMessage, setOptimizeMessage] = useState<string | null>(null);
+  const [reprocessingMessage, setReprocessingMessage] = useState<string | null>(null);
+  const [customSport, setCustomSport] = useState('');
 
   // Load storage info
   useEffect(() => {
@@ -67,9 +69,43 @@ const SettingsPage: React.FC = () => {
     setHasChanges(true);
   };
 
-  const handleSave = () => {
+  // v2: user-managed list of Strava activity types treated as wingfoil.
+  const toggleSportType = (sport: string) => {
+    setLocalConfig(prev => {
+      const current = prev.wingfoilSportTypes ?? [];
+      const next = current.includes(sport)
+        ? current.filter(s => s !== sport)
+        : [...current, sport];
+      return { ...prev, wingfoilSportTypes: next };
+    });
+    setHasChanges(true);
+  };
+
+  const addCustomSport = () => {
+    const value = customSport.trim();
+    if (!value) return;
+    setLocalConfig(prev => {
+      const current = prev.wingfoilSportTypes ?? [];
+      if (current.includes(value)) return prev;
+      return { ...prev, wingfoilSportTypes: [...current, value] };
+    });
+    setHasChanges(true);
+    setCustomSport('');
+  };
+
+  const handleSave = async () => {
     updateConfig(localConfig);
     setHasChanges(false);
+    // v2: a config change can include or exclude sessions (max-speed guard)
+    // and changes per-run stats — re-evaluate every cached session against
+    // the new config so the dashboard reflects it immediately.
+    setReprocessingMessage(t('settings.reprocessing'));
+    try {
+      const touched = await reprocessAllSessions();
+      setReprocessingMessage(`${touched} ${t('settings.sessionsReprocessed')}`);
+    } catch {
+      setReprocessingMessage(t('settings.reprocessingError'));
+    }
   };
 
   const handleReset = () => {
@@ -181,6 +217,105 @@ const SettingsPage: React.FC = () => {
               </p>
             </div>
 
+            {/* v2: Max Speed Threshold — wingfoilers reach 30-50 km/h on
+                planing, racers more, but a session that peaks above 80 km/h
+                is almost certainly a powered craft mistake. */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700">
+                  {t('settings.maxSpeedThreshold')}
+                </label>
+                <span className="text-sm font-semibold text-ocean-600">
+                  {localConfig.maxSpeedThreshold} km/h
+                </span>
+              </div>
+              <input
+                type="range"
+                min="30"
+                max="80"
+                step="1"
+                value={localConfig.maxSpeedThreshold}
+                onChange={e =>
+                  handleConfigChange('maxSpeedThreshold', parseInt(e.target.value))
+                }
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-ocean-600"
+              />
+              <p className="mt-1 text-xs text-gray-500 flex items-center">
+                <Info className="h-3 w-3 mr-1" />
+                {t('settings.maxSpeedDesc')}
+              </p>
+            </div>
+
+            {/* v2: Strava sport types whitelist */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('settings.wingfoilSportTypes')}
+              </label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {['Kitesurf', 'Kitesurfing', 'Kitesurf Session', 'Windsurf', 'Sailing', 'StandUpPaddling', 'Workout'].map(sport => {
+                  const active = (localConfig.wingfoilSportTypes ?? []).includes(sport);
+                  return (
+                    <button
+                      type="button"
+                      key={sport}
+                      onClick={() => toggleSportType(sport)}
+                      className={`text-xs px-3 py-1.5 rounded-full border ${
+                        active
+                          ? 'bg-ocean-600 text-white border-ocean-600'
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {sport}
+                    </button>
+                  );
+                })}
+              </div>
+              {(localConfig.wingfoilSportTypes ?? []).some(
+                s => !['Kitesurf', 'Kitesurfing', 'Kitesurf Session', 'Windsurf', 'Sailing', 'StandUpPaddling', 'Workout'].includes(s)
+              ) && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {(localConfig.wingfoilSportTypes ?? [])
+                    .filter(s => !['Kitesurf', 'Kitesurfing', 'Kitesurf Session', 'Windsurf', 'Sailing', 'StandUpPaddling', 'Workout'].includes(s))
+                    .map(sport => (
+                      <button
+                        type="button"
+                        key={sport}
+                        onClick={() => toggleSportType(sport)}
+                        className="text-xs px-3 py-1.5 rounded-full bg-ocean-600 text-white border border-ocean-600"
+                      >
+                        {sport} ×
+                      </button>
+                    ))}
+                </div>
+              )}
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={customSport}
+                  onChange={e => setCustomSport(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addCustomSport();
+                    }
+                  }}
+                  placeholder={t('settings.customSportPlaceholder')}
+                  className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5"
+                />
+                <button
+                  type="button"
+                  onClick={addCustomSport}
+                  className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                >
+                  {t('common.add')}
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-gray-500 flex items-center">
+                <Info className="h-3 w-3 mr-1" />
+                {t('settings.wingfoilSportTypesDesc')}
+              </p>
+            </div>
+
             {/* Min Run Duration */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -280,6 +415,12 @@ const SettingsPage: React.FC = () => {
                 {t('settings.saveNote')}
               </p>
             </div>
+          )}
+
+          {reprocessingMessage && (
+            <p className="mt-3 text-sm text-ocean-700 bg-ocean-50 rounded-lg p-3">
+              {reprocessingMessage}
+            </p>
           )}
         </div>
 

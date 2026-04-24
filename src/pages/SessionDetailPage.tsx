@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Trophy,
   Map,
+  Camera,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr, enUS, nl } from 'date-fns/locale';
@@ -24,7 +25,10 @@ import Loading from '../components/ui/Loading';
 import SessionSpeedChart from '../components/charts/SessionSpeedChart';
 import SessionMap from '../components/maps/SessionMap';
 import { formatDuration, formatDistance } from '../utils/runDetection';
-import { WingRun } from '../types';
+import { WingRun, SessionMediaMeta } from '../types';
+import MediaUploader from '../components/media/MediaUploader';
+import MediaGallery from '../components/media/MediaGallery';
+import { listMediaForSession } from '../components/media/mediaStorage';
 
 const SessionDetailPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -33,6 +37,14 @@ const SessionDetailPage: React.FC = () => {
   const { t, language } = useTranslation();
   const [selectedRun, setSelectedRun] = useState<WingRun | null>(null);
   const [isReprocessing, setIsReprocessing] = useState(false);
+  const [media, setMedia] = useState<SessionMediaMeta[]>([]);
+
+  // v2: hydrate session media from IndexedDB whenever the session id
+  // changes. Metadata only — blobs are streamed on demand by the gallery.
+  useEffect(() => {
+    if (!sessionId) return;
+    listMediaForSession(sessionId).then(setMedia).catch(() => setMedia([]));
+  }, [sessionId]);
   const [showMap, setShowMap] = useState(true);
 
   // Get the appropriate locale for date-fns
@@ -323,6 +335,25 @@ const SessionDetailPage: React.FC = () => {
                 }
               />
             ))}
+          </div>
+        </div>
+
+        {/* v2: Media (photos + videos) — stored locally in IndexedDB. Videos
+            will also feed the future posture-analysis IA workflow. */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <Camera className="h-5 w-5 text-ocean-600 mr-2" />
+            {t('sessionDetail.mediaTitle')}
+          </h2>
+          <div className="space-y-4">
+            <MediaUploader
+              sessionId={session.id}
+              onAdded={item => setMedia(prev => [...prev, item])}
+            />
+            <MediaGallery
+              media={media}
+              onDeleted={id => setMedia(prev => prev.filter(m => m.id !== id))}
+            />
           </div>
         </div>
       </div>

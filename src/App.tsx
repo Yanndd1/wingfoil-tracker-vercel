@@ -9,6 +9,8 @@ import SessionsPage from './pages/SessionsPage';
 import SessionDetailPage from './pages/SessionDetailPage';
 import SettingsPage from './pages/SettingsPage';
 import SpotsPage from './pages/SpotsPage';
+import GearPage from './pages/GearPage';
+import MarketplacePage from './pages/MarketplacePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import Loading from './components/ui/Loading';
 
@@ -107,6 +109,26 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <DataProvider>
               <SpotsPage />
+            </DataProvider>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/matos"
+        element={
+          <ProtectedRoute>
+            <DataProvider>
+              <GearPage />
+            </DataProvider>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/marketplace"
+        element={
+          <ProtectedRoute>
+            <DataProvider>
+              <MarketplacePage />
             </DataProvider>
           </ProtectedRoute>
         }

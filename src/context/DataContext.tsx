@@ -3,7 +3,7 @@ import { WingfoilSession, RunDetectionConfig, ProgressStats, StravaActivity } fr
 import * as storage from '../services/storage';
 import { StorageQuotaError } from '../services/storage';
 import * as stravaService from '../services/strava';
-import { detectRuns, calculateSessionStats } from '../utils/runDetection';
+import { detectRunsWithMeta, calculateSessionStats } from '../utils/runDetection';
 import { useAuth } from './AuthContext';
 
 interface DataContextType {
@@ -18,6 +18,7 @@ interface DataContextType {
   deleteSession: (sessionId: string) => void;
   updateConfig: (config: Partial<RunDetectionConfig>) => void;
   reprocessSession: (sessionId: string) => Promise<void>;
+  reprocessAllSessions: () => Promise<number>;
   getSession: (sessionId: string) => WingfoilSession | null;
 }
 
@@ -56,6 +57,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const loadedSessions = storage.getSessions();
     setSessions(loadedSessions);
     setIsLoading(false);
+
+    // v2 migration: sessions cached by an older version lack the new
+    // `averageRunAverageSpeed` stat and the `excluded` flag. Reprocess
+    // them with the current config so the new dashboard KPIs work on
+    // day one without forcing the user to touch Settings.
+    const needsMigration = loadedSessions.some(
+      s => s.rawData && s.stats.averageRunAverageSpeed === undefined
+    );
+    if (needsMigration) {
+      setTimeout(() => {
+        const all = storage.getSessions();
+        for (const session of all) {
+          if (!session.rawData) continue;
+          const result = detectRunsWithMeta(
+            session.rawData.time,
+            session.rawData.speed.map(s => s / 3.6),
+            session.rawData.distance,
+            storage.getConfig(),
+            session.rawData.heartrate,
+            session.rawData.latlng
+          );
+          storage.addSession({
+            ...session,
+            runs: result.runs,
+            stats: calculateSessionStats(result.runs),
+            excluded: result.excluded,
+          });
+        }
+        setSessions(storage.getSessions());
+      }, 0);
+    }
   }, []);
 
   // Calculate progress stats whenever sessions change
@@ -69,15 +101,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [sessions]);
 
   const calculateProgressStats = (sessions: WingfoilSession[]): ProgressStats => {
-    const allRuns = sessions.flatMap(s => s.runs);
+    // v2: excluded sessions (rejected by the max-speed guard) are ignored
+    // for aggregated stats. Their metadata stays in storage so a threshold
+    // change can re-include them without re-syncing Strava.
+    const activeSessions = sessions.filter(s => !s.excluded);
+    const allRuns = activeSessions.flatMap(s => s.runs);
     const totalRuns = allRuns.length;
-    const totalSessions = sessions.length;
+    const totalSessions = activeSessions.length;
 
     const totalRidingTime = allRuns.reduce((sum, r) => sum + r.duration, 0);
     const totalRidingDistance = allRuns.reduce((sum, r) => sum + r.distance, 0);
 
     // Recent sessions for trend calculation (last 5 vs previous 5)
-    const sortedSessions = [...sessions].sort(
+    const sortedSessions = [...activeSessions].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
@@ -124,6 +160,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return ((recent - previous) / previous) * 100;
     };
 
+    // v2: arithmetic mean of every run's averageSpeed across the whole
+    // history. Replaces the "best max speed" headline.
+    const allTimeAverageSpeed =
+      totalRuns > 0
+        ? Math.round(
+            (allRuns.reduce((sum, r) => sum + r.averageSpeed, 0) / totalRuns) * 10
+          ) / 10
+        : 0;
+
+    // v2: headline metrics for the most recent active session.
+    const latest = sortedSessions[0];
+    const lastSession = latest
+      ? {
+          longestRunDuration: latest.stats.longestRunDuration,
+          longestRunDistance: latest.stats.longestRunDistance,
+        }
+      : undefined;
+
     return {
       totalSessions,
       totalRuns,
@@ -135,6 +189,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       bestRunDuration: allRuns.length > 0 ? Math.max(...allRuns.map(r => r.duration)) : 0,
       bestRunDistance: allRuns.length > 0 ? Math.max(...allRuns.map(r => r.distance)) : 0,
       bestMaxSpeed: allRuns.length > 0 ? Math.max(...allRuns.map(r => r.maxSpeed)) : 0,
+      allTimeAverageSpeed,
+      lastSession,
       recentTrend: {
         runDuration: calculateTrend(recentAvgDuration, previousAvgDuration),
         runDistance: calculateTrend(recentAvgDistance, previousAvgDistance),
@@ -154,7 +210,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
-      const runs = detectRuns(
+      const result = detectRunsWithMeta(
         streams.time.data,
         streams.velocity_smooth.data,
         streams.distance.data,
@@ -163,12 +219,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         streams.latlng?.data
       );
 
-      if (runs.length === 0) {
+      // v2: keep the session even if excluded so the user can re-include
+      // it later by raising the threshold, without re-syncing Strava.
+      if (result.runs.length === 0 && !result.excluded) {
         console.warn('No runs detected in activity:', activity.id);
         return null;
       }
 
-      const stats = calculateSessionStats(runs);
+      const stats = calculateSessionStats(result.runs);
 
       const session: WingfoilSession = {
         id: `session_${activity.id}`,
@@ -177,8 +235,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         date: activity.start_date_local,
         totalDuration: activity.elapsed_time,
         totalDistance: activity.distance,
-        runs,
+        runs: result.runs,
         stats,
+        excluded: result.excluded,
         rawData: {
           time: streams.time.data,
           speed: streams.velocity_smooth.data.map(s => s * 3.6), // Convert to km/h
@@ -209,8 +268,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const lastSync = storage.getLastSync();
       const after = lastSync ? lastSync : undefined;
 
-      // Fetch activities from Strava
-      const activities = await stravaService.getWingfoilActivities(after);
+      // Fetch activities from Strava — user-configurable sport whitelist.
+      const activities = await stravaService.getWingfoilActivities(
+        after,
+        undefined,
+        undefined,
+        config.wingfoilSportTypes
+      );
 
       let importedCount = 0;
 
@@ -311,7 +375,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      const runs = detectRuns(
+      const result = detectRunsWithMeta(
         session.rawData.time,
         session.rawData.speed.map(s => s / 3.6), // Convert back to m/s
         session.rawData.distance,
@@ -320,12 +384,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session.rawData.latlng
       );
 
-      const stats = calculateSessionStats(runs);
+      const stats = calculateSessionStats(result.runs);
 
       const updatedSession: WingfoilSession = {
         ...session,
-        runs,
+        runs: result.runs,
         stats,
+        excluded: result.excluded,
       };
 
       storage.addSession(updatedSession);
@@ -334,6 +399,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
     [sessions, config]
   );
+
+  /**
+   * v2: re-evaluate every cached session against the current detection
+   * config — typically called after the user changes a threshold so the
+   * dashboard reflects it immediately without a Strava re-sync.
+   */
+  const reprocessAllSessions = useCallback(async (): Promise<number> => {
+    const all = storage.getSessions();
+    let touched = 0;
+    for (const session of all) {
+      if (!session.rawData) continue;
+      const result = detectRunsWithMeta(
+        session.rawData.time,
+        session.rawData.speed.map(s => s / 3.6),
+        session.rawData.distance,
+        config,
+        session.rawData.heartrate,
+        session.rawData.latlng
+      );
+      const stats = calculateSessionStats(result.runs);
+      storage.addSession({
+        ...session,
+        runs: result.runs,
+        stats,
+        excluded: result.excluded,
+      });
+      touched++;
+    }
+    setSessions(storage.getSessions());
+    return touched;
+  }, [config]);
 
   const getSession = useCallback(
     (sessionId: string): WingfoilSession | null => {
@@ -356,6 +452,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteSession,
         updateConfig,
         reprocessSession,
+        reprocessAllSessions,
         getSession,
       }}
     >

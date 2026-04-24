@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Waves, BarChart3, Settings, User, LogOut, Heart, MapPin } from 'lucide-react';
+import { Waves, BarChart3, Settings, User, LogOut, Heart, MapPin, Package, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage, LANGUAGES, Language } from '../../context/LanguageContext';
 
@@ -13,6 +13,8 @@ const Header: React.FC = () => {
     { path: '/', label: t('common.dashboard'), icon: BarChart3 },
     { path: '/sessions', label: t('common.sessions'), icon: Waves },
     { path: '/spots', label: t('common.spots'), icon: MapPin },
+    { path: '/matos', label: t('common.gear'), icon: Package },
+    { path: '/marketplace', label: t('common.marketplace'), icon: ShoppingBag },
     { path: '/settings', label: t('common.settings'), icon: Settings },
   ];
 
@@ -114,24 +116,27 @@ const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile navigation */}
+      {/* Mobile navigation
+          v2: 6 tabs no longer fit a 360-400px screen, so the row scrolls
+          horizontally. `flex-shrink-0 min-w-[72px]` keeps tab widths
+          consistent and prevents labels from being clipped. */}
       {isAuthenticated && (
         <nav className="md:hidden border-t border-gray-200 bg-white">
-          <div className="flex justify-around">
+          <div className="flex overflow-x-auto">
             {navItems.map(item => {
               const Icon = item.icon;
               return (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex flex-col items-center py-3 px-4 text-xs font-medium transition-colors ${
+                  className={`flex flex-col items-center py-3 px-4 text-xs font-medium transition-colors flex-shrink-0 min-w-[72px] ${
                     isActive(item.path)
                       ? 'text-ocean-600'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   <Icon className="h-5 w-5 mb-1" />
-                  <span>{item.label}</span>
+                  <span className="whitespace-nowrap">{item.label}</span>
                 </Link>
               );
             })}
