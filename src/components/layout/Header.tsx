@@ -32,7 +32,7 @@ const Header: React.FC = () => {
       {/* Made with love banner */}
       <div className="bg-ocean-500 text-white text-center py-1 text-xs font-medium">
         <span className="flex items-center justify-center gap-1">
-          Made with <Heart className="h-3 w-3 fill-current text-red-300" /> in Corbière en Provence
+          Made with <Heart className="h-3 w-3 fill-current text-red-300" /> in Provence
         </span>
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
