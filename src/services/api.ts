@@ -66,6 +66,33 @@ function withDiscipline(extraQuery = ''): string {
   return `?discipline=${DISCIPLINE}${sep}${extraQuery}`;
 }
 
+// ───── Analytics tracking ─────
+
+/**
+ * Best-effort fire-and-forget. Failures are swallowed so analytics never
+ * blocks the user. The endpoint accepts unauthenticated POSTs (we attach
+ * the athlete_id from the active Strava session when available).
+ */
+export async function track(
+  eventType: string,
+  athleteId?: number
+): Promise<void> {
+  try {
+    await fetch(`${API_BASE_URL}/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: eventType,
+        athlete_id: athleteId ?? null,
+        discipline: DISCIPLINE,
+      }),
+      keepalive: true,
+    });
+  } catch {
+    /* analytics MUST NOT throw */
+  }
+}
+
 // ───── Spots ─────
 
 interface ApiSpotRow {

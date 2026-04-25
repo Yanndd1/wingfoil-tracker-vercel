@@ -297,6 +297,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updatedSessions = storage.getSessions();
       setSessions(updatedSessions);
 
+      // v2 analytics: best-effort, lazy-imported.
+      const athleteId = stravaService.getAthlete()?.id;
+      void import('../services/api').then(api => api.track('sync', athleteId));
+
       return importedCount;
     } catch (error) {
       if (error instanceof StorageQuotaError) {

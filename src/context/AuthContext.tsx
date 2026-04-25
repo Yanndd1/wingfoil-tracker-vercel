@@ -63,6 +63,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const tokens = await stravaService.exchangeCodeForTokens(code);
       setIsAuthenticated(true);
       setAthlete(tokens.athlete || null);
+      // v2 analytics: best-effort, lazy-imported.
+      void import('../services/api').then(api =>
+        api.track('login', tokens.athlete?.id)
+      );
     } catch (error) {
       console.error('Failed to authenticate:', error);
       throw error;
