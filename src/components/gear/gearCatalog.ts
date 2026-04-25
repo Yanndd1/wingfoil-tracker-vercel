@@ -76,6 +76,10 @@ export const GEAR_CATALOG = {
       'Allvator Zuma': ['4\'2 / 30L', '4\'6 / 45L', '4\'10 / 60L', '5\'2 / 80L', '5\'6 / 100L'],
       'Allvator Hipe': ['55L', '70L', '85L', '100L', '115L'],
       'Catch DW': ['7\'0', '7\'6', '8\'0'],
+      'Pump Foil Board Kluber HDCC': ['HDCC / 65', 'HDCC / 70', 'HDCC / 75', 'HDCC / 80', 'HDCC / 85'],
+      'Pump Foil Board Kluber FSP': ['65', '70', '75', '80', '85', '90'],
+      'Allvator Mob': ['25L', '32L', '40L', '50L', '60L'],
+      'Lethal Wing': ['65L', '75L', '85L', '95L', '110L'],
     },
     Takuma: {
       'HELIUM Kujira Wing': ['4\'8 / 60L', '5\'0 / 75L', '5\'4 / 95L', '5\'8 / 115L'],
@@ -159,6 +163,11 @@ export const GEAR_CATALOG = {
       'Curve V2': ['S', 'M', 'L', 'XL'],
       'Veloce HDW (Downwind)': ['M-HDW', 'L-HDW', 'XL-HDW'],
       'X-Over V2': ['S', 'M', 'L', 'XL'],
+      'Foil Front Wing Trail V3': ['S', 'M', 'L', 'XL', 'XXL', '3XL'],
+      'Foil Front Wing Sirus V3': ['S', 'M', 'L', 'XL', 'XXL', '3XL'],
+      'Foil Front Wing Pulse V3': ['M', 'L', 'XL', 'XXL'],
+      'Foil Front Wing Curve V3': ['S', 'M', 'L', 'XL'],
+      'Foil Front Wing Allvator V3': ['M', 'L', 'XL', 'XXL'],
     },
     Sroka: {
       'Classic': ['1250', '1500', '1750', '2000'],
@@ -222,6 +231,10 @@ export const GEAR_CATALOG = {
     Gong: {
       'Tail Rise V2': ['S', 'M', 'L', 'XL'],
       'Tail Curve V2': ['S', 'M', 'L'],
+      'Foil Stab Trail V3': ['S', 'M', 'L', 'XL', 'XXL'],
+      'Foil Stab Fluid H V3': ['S', 'M', 'L', 'XL', '3XL'],
+      'Foil Stab Fluid H V3 FG': ['S / FG', 'M / FG', 'L / FG', 'XL / FG'],
+      'Foil Stab Sirus V3': ['M', 'L', 'XL'],
     },
     AFS: {
       'Pure Stab': ['250', '300'],
@@ -271,6 +284,9 @@ export const GEAR_CATALOG = {
     },
     Gong: {
       'Allvator': ['XXS', 'XS', 'S', 'M', 'L'],
+      'Foil Fuselage V3 Aluminium': ['Standard / V3 Front wing - V3 Stab'],
+      'Foil Fuselage V3 Titanium': ['Standard / V3 Front wing - V3 Stab'],
+      'Foil Fuselage V3 Carbon': ['Standard / V3 Front wing - V3 Stab'],
     },
   },
 
@@ -332,6 +348,12 @@ export const GEAR_CATALOG = {
     Gong: {
       'Carbon IKAIKA': ['65cm', '75cm', '85cm', '95cm'],
       'Alu Pro': ['65cm', '75cm', '85cm'],
+      'Foil Alu Mast 70 cm V3': ['19 mm'],
+      'Foil Alu Mast 80 cm V3': ['19 mm'],
+      'Foil Alu Mast 90 cm V3': ['19 mm'],
+      'Foil Carbon Mast HM 70 cm V3': ['19 mm'],
+      'Foil Carbon Mast HM 80 cm V3': ['19 mm'],
+      'Foil Carbon Mast HM 90 cm V3': ['19 mm'],
     },
     Sroka: {
       'Alu Mast': ['75cm', '85cm', '95cm'],
